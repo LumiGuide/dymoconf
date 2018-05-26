@@ -3,32 +3,32 @@
 
 import sys
 
-def do_print (width, height, data):
+def do_print (width, height, data, stream=sys.stdout.buffer):
    bytes = (width + 7) // 8
 
-   sys.stdout.buffer.write (b"%c*" % (27, ))          # Restore defaults
-   sys.stdout.buffer.write (b"%cB%c" % (27, 9))       # dot tab 0
-   sys.stdout.buffer.write (b"%cD%c" % (27, bytes))   # Bytes per line
-   sys.stdout.buffer.write (b"%ci" % (27, ))          # Text mode
+   stream.write (b"%c*" % (27, ))          # Restore defaults
+   stream.write (b"%cB%c" % (27, 9))       # dot tab 0
+   stream.write (b"%cD%c" % (27, bytes))   # Bytes per line
+   stream.write (b"%ci" % (27, ))          # Text mode
 
    # label length
    formlen = int (height)
-   sys.stdout.buffer.write (b"%cL%c%c" % (27, formlen // 256, formlen % 256))
+   stream.write (b"%cL%c%c" % (27, formlen // 256, formlen % 256))
 
    for i in range (height):
       if data:
          line = data[:bytes]
          data = data[bytes:]
-      sys.stdout.buffer.write (b"\x16" + line)
+      stream.write (b"\x16" + line)
 
    for i in range (88 * 2):  # feed to knife
-      sys.stdout.buffer.write (b"\x16" + b"\x00" * bytes)
+      stream.write (b"\x16" + b"\x00" * bytes)
 
-   sys.stdout.buffer.write (b"%cE" % (27, ))  # Cut tape
+   stream.write (b"%cE" % (27, ))  # Cut tape
 
 
 
-def render_text (text, tapewidth=128, font="Fira Sans Condensed Medium, 60"):
+def render_text (text, tapewidth=128, font="Arial, 60", save=None, stream=sys.stdout.buffer):
    import math
    import gi
    import cairo, PIL.Image, io
@@ -74,13 +74,37 @@ def render_text (text, tapewidth=128, font="Fira Sans Condensed Medium, 60"):
 
    img = PIL.Image.open (f)
    img = img.convert('1')
-   do_print (width, height, img.tobytes ())
+   if save:
+      img.save(save)
+      print("image saved to", save)
+   else:
+      do_print (width, height, img.tobytes (), stream)
 
-
+import argparse
 
 if __name__ == '__main__':
-   render_text (sys.argv[1])
-
+   parser = argparse.ArgumentParser(description="Render text for label write and optionally print")
+   parser.add_argument("text", nargs='?', help="text to write (default: read from stdin)")
+   parser.add_argument("--font", default="Arial, 60", help="font to use (default: 'Arial, 60')")
+   parser.add_argument("--tapewidth", default=128, type=int, help="Tape Width (default: 128)")
+   parser.add_argument("--save", metavar="FILE", help="save image to filename instead of printing")
+   parser.add_argument("--ip", help="talk to printer at IP instead of writing to stdout")
+   args = parser.parse_args()
+   if args.text is None:
+      args.text = input()
+   if args.ip:
+      if args.save:
+         raise Exception("options 'ip' and 'save' conflict")
+      import socket
+      stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_IP)
+      print("connecting to {}:{}".format(args.ip, 9100))
+      stream.connect((args.ip, 9100))
+   else:
+      stream = sys.stdout.buffer
+   render_text(args.text, font=args.font, tapewidth=args.tapewidth, save=args.save, stream=stream)
+   if args.ip:
+      time.sleep(4)
+      stream.close()
    if 0:
       img = b""
       for i in range (256)[::-1]:
