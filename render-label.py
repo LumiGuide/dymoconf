@@ -91,7 +91,7 @@ if __name__ == '__main__':
    parser.add_argument("--ip", help="talk to printer at IP instead of writing to stdout")
    args = parser.parse_args()
    if args.text is None:
-      args.text = input()
+      args.text = input("text: ")
    if args.ip:
       if args.save:
          raise Exception("options 'ip' and 'save' conflict")
