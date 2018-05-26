@@ -250,7 +250,7 @@ if __name__ == '__main__':
    print ("Starting up Wifi: ", end="", flush=True)
    lw.set_enable_wifi (True)
    # needs some time to settle - otherwise ESC W <0x0c> might not respond
-   time.sleep (1)
+   time.sleep (5)
 
    while True:
       r = lw.get_network_state ()
