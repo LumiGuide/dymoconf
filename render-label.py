@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, time
 
 def do_print (width, height, data, stream=sys.stdout.buffer):
    bytes = (width + 7) // 8
+   try:
+      stream.sendall
+   except AttributeError:
+      output = lambda x: stream.write(x)
+   else:
+      output = lambda x: stream.sendall(x)
 
-   stream.write (b"%c*" % (27, ))          # Restore defaults
-   stream.write (b"%cB%c" % (27, 9))       # dot tab 0
-   stream.write (b"%cD%c" % (27, bytes))   # Bytes per line
-   stream.write (b"%ci" % (27, ))          # Text mode
+   output (b"%c*" % (27, ))          # Restore defaults
+   output (b"%cB%c" % (27, 9))       # dot tab 0
+   output (b"%cD%c" % (27, bytes))   # Bytes per line
+   output (b"%ci" % (27, ))          # Text mode
 
    # label length
    formlen = int (height)
-   stream.write (b"%cL%c%c" % (27, formlen // 256, formlen % 256))
+   output (b"%cL%c%c" % (27, formlen // 256, formlen % 256))
 
    for i in range (height):
       if data:
          line = data[:bytes]
          data = data[bytes:]
-      stream.write (b"\x16" + line)
+      output (b"\x16" + line)
 
    for i in range (88 * 2):  # feed to knife
-      stream.write (b"\x16" + b"\x00" * bytes)
+      output (b"\x16" + b"\x00" * bytes)
 
-   stream.write (b"%cE" % (27, ))  # Cut tape
+   output (b"%cE" % (27, ))  # Cut tape
 
 
 
@@ -103,7 +109,7 @@ if __name__ == '__main__':
       stream = sys.stdout.buffer
    render_text(args.text, font=args.font, tapewidth=args.tapewidth, save=args.save, stream=stream)
    if args.ip:
-      time.sleep(4)
+      time.sleep(2)
       stream.close()
    if 0:
       img = b""
